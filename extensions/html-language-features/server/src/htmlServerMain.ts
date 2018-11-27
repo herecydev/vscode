@@ -11,6 +11,7 @@ import {
 } from 'vscode-languageserver';
 import { TextDocument, Diagnostic, DocumentLink, SymbolInformation } from 'vscode-languageserver-types';
 import { getLanguageModes, LanguageModes, Settings } from './modes/languageModes';
+import * as fs from 'fs';
 
 import { format } from './modes/formatting';
 import { pushAll } from './utils/arrays';
@@ -19,6 +20,8 @@ import uri from 'vscode-uri';
 import { formatError, runSafe, runSafeAsync } from './utils/runner';
 
 import { getFoldingRanges } from './modes/htmlFolding';
+import { parseTagSet } from './utils/tagDefinitions';
+import { ITagSet } from 'vscode-html-languageservice';
 
 namespace TagCloseRequest {
 	export const type: RequestType<TextDocumentPositionParams, string | null, any, any> = new RequestType('html/tag');
@@ -88,11 +91,22 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 		}
 	}
 
+	const tagDefinitions: string[] = params.initializationOptions.htmlTagDefinitions;
+	const tagSets: ITagSet[] = [];
+
+	if (tagDefinitions) {
+		tagDefinitions.forEach(path => {
+			const tagDefSource = fs.readFileSync(path, 'utf-8');
+			tagSets.push(parseTagSet(tagDefSource));
+		});
+	}
+
 	const workspace = {
 		get settings() { return globalSettings; },
 		get folders() { return workspaceFolders; }
 	};
-	languageModes = getLanguageModes(initializationOptions ? initializationOptions.embeddedLanguages : { css: true, javascript: true }, workspace);
+	languageModes = getLanguageModes(initializationOptions ? initializationOptions.embeddedLanguages : { css: true, javascript: true }, workspace, tagSets);
+
 	documents.onDidClose(e => {
 		languageModes.onDocumentRemoved(e.document);
 	});
