@@ -31,6 +31,9 @@
       "type": "object",
       "title": "HTML",
       "properties": {
+        "html.experimental.tagDefinitions": {
+          "type": "array"
+        },
         "html.format.enable": {
           "type": "boolean",
           "scope": "window",

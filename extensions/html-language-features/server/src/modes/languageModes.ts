@@ -65,12 +65,14 @@ export interface LanguageModeRange extends Range {
 	attributeValue?: boolean;
 }
 
-export function getLanguageModes(supportedLanguages: { [languageId: string]: boolean; }, workspace: Workspace, tagSets: ITagSet[]): LanguageModes {
+export function getLanguageModes(supportedLanguages: { [languageId: string]: boolean; }, workspace: Workspace, tagSets?: ITagSet[]): LanguageModes {
 
 	var htmlLanguageService = getHTMLLanguageService();
-	tagSets.forEach(ts => {
-		htmlLanguageService.addTagDefinitions(ts);
-	});
+	if (tagSets) {
+		tagSets.forEach(ts => {
+			htmlLanguageService.addTagDefinitions(ts);
+		});
+	}
 	let documentRegions = getLanguageModelCache<HTMLDocumentRegions>(10, 60, document => getDocumentRegions(htmlLanguageService, document));
 
 	let modelCaches: LanguageModelCache<any>[] = [];
