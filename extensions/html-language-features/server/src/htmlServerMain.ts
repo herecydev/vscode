@@ -20,7 +20,7 @@ import uri from 'vscode-uri';
 import { formatError, runSafe, runSafeAsync } from './utils/runner';
 
 import { getFoldingRanges } from './modes/htmlFolding';
-import { parseTagSet } from './utils/tagDefinitions';
+import { parseTagSet, parseGlobalAttributes } from './utils/tagDefinitions';
 import { ITagSet } from 'vscode-html-languageservice';
 
 namespace TagCloseRequest {
@@ -91,13 +91,24 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 		}
 	}
 
-	const tagDefinitions: string[] = params.initializationOptions.htmlTagDefinitions;
-	const tagSets: ITagSet[] = [];
+	const tagPaths: string[] = params.initializationOptions.tagPaths;
+	const globalAttributePaths: string[] = params.initializationOptions.globalAttributePaths;
+	const htmlTags: ITagSet[] = [];
+	const htmlGlobalAttributes: any[] = [];
 
-	if (tagDefinitions) {
-		tagDefinitions.forEach(path => {
+	if (tagPaths) {
+		tagPaths.forEach(path => {
 			const tagDefSource = fs.readFileSync(path, 'utf-8');
-			tagSets.push(parseTagSet(tagDefSource));
+			htmlTags.push(parseTagSet(tagDefSource));
+		});
+	}
+	if (htmlGlobalAttributes) {
+		globalAttributePaths.forEach(path => {
+			const globalAttributesDefSource = fs.readFileSync(path, 'utf-8');
+			const parsedGlobalAttributes = parseGlobalAttributes(globalAttributesDefSource);
+			Object.keys(parsedGlobalAttributes).forEach(k => {
+				htmlGlobalAttributes.push(parsedGlobalAttributes[k]);
+			});
 		});
 	}
 
@@ -105,7 +116,8 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 		get settings() { return globalSettings; },
 		get folders() { return workspaceFolders; }
 	};
-	languageModes = getLanguageModes(initializationOptions ? initializationOptions.embeddedLanguages : { css: true, javascript: true }, workspace, tagSets);
+
+	languageModes = getLanguageModes(initializationOptions ? initializationOptions.embeddedLanguages : { css: true, javascript: true }, workspace, htmlTags, htmlGlobalAttributes);
 
 	documents.onDidClose(e => {
 		languageModes.onDocumentRemoved(e.document);

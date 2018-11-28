@@ -8,7 +8,7 @@ import * as fs from 'fs';
 import * as nls from 'vscode-nls';
 const localize = nls.loadMessageBundle();
 
-import { languages, ExtensionContext, IndentAction, Position, TextDocument, Range, CompletionItem, CompletionItemKind, SnippetString, workspace } from 'vscode';
+import { languages, ExtensionContext, IndentAction, Position, TextDocument, Range, CompletionItem, CompletionItemKind, SnippetString, workspace, extensions } from 'vscode';
 import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind, RequestType, TextDocumentPositionParams } from 'vscode-languageclient';
 import { EMPTY_ELEMENTS } from './htmlEmptyTagsShared';
 import { activateTagClosing } from './tagClosing';
@@ -49,12 +49,32 @@ export function activate(context: ExtensionContext) {
 	let documentSelector = ['html', 'handlebars', 'razor'];
 	let embeddedLanguages = { css: true, javascript: true };
 
-	let htmlTagDefinitions: string[] = workspace.getConfiguration('html').get('experimental.tagDefinitions', []);
-	if (htmlTagDefinitions) {
+	let tagPaths: string[] = workspace.getConfiguration('html').get('experimental.tags', []);
+	let globalAttributePaths: string[] = workspace.getConfiguration('html').get('experimental.globalAttributes', []);
+
+	if (tagPaths) {
 		const workspaceRoot = workspace.workspaceFolders![0].uri.fsPath;
-		htmlTagDefinitions = htmlTagDefinitions.map(d => {
+		tagPaths = tagPaths.map(d => {
 			return path.resolve(workspaceRoot, d);
 		});
+	}
+
+	for (const extension of extensions.all) {
+		const contributes = extension.packageJSON && extension.packageJSON.contributes;
+		if (contributes.html) {
+			console.log(extension.id);
+			console.log(JSON.stringify(contributes.html, null, 2));
+			if (contributes.html.tags) {
+				console.log(`Adding tags from ${extension.id}: ${JSON.stringify(contributes.html.tags)}`);
+				const resolvedHtmlTagPaths = contributes.html.tags.map((p: string) => path.resolve(extension.extensionPath, p));
+				tagPaths = tagPaths.concat(resolvedHtmlTagPaths);
+			}
+			if (contributes.html.globalAttributes) {
+				console.log(`Adding global attributes from ${extension.id}: ${JSON.stringify(contributes.html.globalAttributes)}`);
+				const resolvedHtmlGlobalAttributePaths = contributes.html.globalAttributes.map((p: string) => path.resolve(extension.extensionPath, p));
+				globalAttributePaths = globalAttributePaths.concat(resolvedHtmlGlobalAttributePaths);
+			}
+		}
 	}
 
 	// Options to control the language client
@@ -65,7 +85,8 @@ export function activate(context: ExtensionContext) {
 		},
 		initializationOptions: {
 			embeddedLanguages,
-			htmlTagDefinitions
+			tagPaths,
+			globalAttributePaths
 		}
 	};
 

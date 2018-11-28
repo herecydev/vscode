@@ -65,13 +65,16 @@ export interface LanguageModeRange extends Range {
 	attributeValue?: boolean;
 }
 
-export function getLanguageModes(supportedLanguages: { [languageId: string]: boolean; }, workspace: Workspace, tagSets?: ITagSet[]): LanguageModes {
+export function getLanguageModes(supportedLanguages: { [languageId: string]: boolean; }, workspace: Workspace, tags?: ITagSet[], globalAttributes?: any[]): LanguageModes {
 
 	var htmlLanguageService = getHTMLLanguageService();
-	if (tagSets) {
-		tagSets.forEach(ts => {
-			htmlLanguageService.addTagDefinitions(ts);
+	if (tags) {
+		tags.forEach(ts => {
+			htmlLanguageService.addTags(ts);
 		});
+	}
+	if (globalAttributes) {
+		htmlLanguageService.addGlobalAttributes(globalAttributes);
 	}
 	let documentRegions = getLanguageModelCache<HTMLDocumentRegions>(10, 60, document => getDocumentRegions(htmlLanguageService, document));
 
