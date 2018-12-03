@@ -588,6 +588,8 @@ export class CommandCenter {
 			path = result[0].fsPath;
 		}
 
+		// moire test
+
 		await this.model.openRepository(path);
 	}
 
